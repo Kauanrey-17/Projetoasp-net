@@ -1,60 +1,117 @@
-﻿using System.Data;
-using MySql.Data.MySqlClient;
+﻿using Microsoft.AspNetCore.Mvc;
 using Projetoasp.net.Models;
+using Projetoasp.net.Repositorio;
 
-namespace Projetoasp.net.Repositorio
+namespace ProjetoEcommerce.Controllers
 {
+    public class ProdutoController : Controller
+    {
+        /* Declara uma variável privada somente leitura do tipo ProdutoRepositorio chamada _produtoRepositorio.
+         O "readonly" indica que o valor desta variável só pode ser atribuído no construtor da classe.
+         ProdutoRepositorio é uma classe do repositorio responsável por interagir com a camada de dados para gerenciar informações de usuários.*/
+        private readonly ProdutoRepositorio _produtoRepositorio;
 
-        public class ProdutoRepositorio(IConfiguration configuration)
+        /* Define o construtor da classe ProdutoController.
+        Recebe uma instância de UsuarioRepositorio como parâmetro (injeção de dependência)*/
+        public ProdutoController(ProdutoRepositorio produtoRepositorio)
         {
-            // Declara um campo privado somente leitura para armazenar a string de conexão com o MySQL.
-            private readonly string _conexaoMySQL = configuration.GetConnectionString("conexaoMySQL");
+            /* O construtor é chamado quando uma nova instância de ProdutoController é criada.*/
+            _produtoRepositorio = produtoRepositorio;
+        }
+
+        public IActionResult Index()
+        {
+            /* Retorna a View padrão associada a esta Action,
+             passando como modelo a lista de todos os produtos obtida do repositório.*/
+            return View(_produtoRepositorio.TodosProdutos());
+        }
 
 
-            /* Define um método público para obter um usuário do banco de dados com base no seu email.
-                    Recebe o email como parâmetro e retorna um objeto 'Usuario' ou null se não encontrado.*/
-            public Nome cadastro(string e)
+        /* Action para exibir o formulário de cadastro de produto (via Requisição GET)*/
+        public IActionResult CadastrarProduto()
+        {
+            //retorna a Página
+            return View();
+        }
+
+        // Action que recebe e processa os dados que serão enviados pelo formulário de cadastro de produto (via Requisição POST)
+        [HttpPost]
+        public IActionResult CadastrarProduto(Produto produto)
+        {
+
+            /* O parâmetro 'produto' recebe os dados enviados pelo formulário,
+             que são automaticamente mapeados para as propriedades da classe Produto.
+             Chama o método no repositório para cadastrar o novo produto no sistema.*/
+            _produtoRepositorio.Cadastrar(produto);
+
+            //redireciona para pagina Index 'nameof(Index)' garante que o nome da Action seja usado corretamente,
+            return RedirectToAction(nameof(Index));
+        }
+
+        /* Action para exibir o formulário de edição de um produto específico (via Requisição GET)
+         Este método recebe o 'id' do produto a ser editado como parâmetro.*/
+        public IActionResult EditarProduto(int Id)
+        {
+            // Obtém o produto específico do repositório usando o ID fornecido.
+            var produto = _produtoRepositorio.ObterProduto(Id);
+
+            // Verifica se o produto foi encontrado. É uma boa prática tratar casos onde o ID é inválido.
+            if (produto == null)
             {
-                // Cria uma nova instância da conexão MySQL dentro de um bloco 'using'.
-                using (var conexao = new MySqlConnection(_conexaoMySQL))
-                {
-                    // Abre a conexão com o banco de dados MySQL.
-                    conexao.Open();
-                    // Cria um novo comando SQL para selecionar todos os campos da tabela 'Usuario' onde o campo 'Email' corresponde ao parâmetro fornecido.
-                    MySqlCommand cmd = new("insert into produtos(Nome=@Nome,Descricao=@Descrocao,Preco=@Preco,Quantidade=@Quantidade) values(?,?,?,?)", conexao);
-                    // Adiciona um parâmetro ao comando SQL para o campo 'Email', especificando o tipo como VarChar e utilizando o valor do parâmetro 'email'.
-                    cmd.Parameters.Add("@Nome", MySqlDbType.VarChar).Value = Nome;
-                    cmd.Parameters.Add("@Descricao", MySqlDbType.VarChar).Value = Descricao;
-                    cmd.Parameters.Add("@email", MySqlDbType.VarChar).Value = email;
-                    cmd.Parameters.Add("@email", MySqlDbType.VarChar).Value = email;
+                // Você pode retornar um NotFound (código de status 404) ou outra resposta apropriada.
+                return NotFound();
+            }
 
-                    // Executa o comando SQL SELECT e obtém um leitor de dados (MySqlDataReader). O CommandBehavior.CloseConnection garante que a conexão
-                    // será fechada automaticamente quando o leitor for fechado.
-                    using (MySqlDataReader dr = cmd.ExecuteReader(CommandBehavior.CloseConnection))
+            // Retorna a View associada a esta Action (EditarProduto.cshtml),
+            return View(produto);
+        }
+
+
+        // Carrega a lista de Produto que envia a alteração(post)
+
+        [HttpPost]
+        [ValidateAntiForgeryToken] // Essencial para segurança contra ataques CSRF
+        /*[Bind] para especificar explicitamente quais propriedades do objeto Cliente podem ser vinculadas a partir dos dados do formulário.
+        Isso é uma boa prática de segurança para evitar o overposting (onde um usuário malicioso pode enviar dados para propriedades
+        que você não pretendia que fossem alteradas)*/
+        public IActionResult EditarProduto(int id, [Bind("Id, Nome, Descricao, Preco, Quantidade")] Produto produto)
+        {
+            // Verifica se o ID fornecido na rota corresponde ao ID do produto no modelo.
+            if (id != produto.Id)
+            {
+                return BadRequest(); // Retorna um erro 400 se os IDs não corresponderem.
+            }
+            if (ModelState.IsValid)
+            {
+                //try /catch = tratamento de erros 
+                try
+                {
+                    // Verifica se o cliente com o Codigo fornecido existe no repositório.
+                    if (_produtoRepositorio.Atualizar(produto))
                     {
-                        // Inicializa uma variável 'usuario' como null. Ela será preenchida se um usuário for encontrado.
-                        Usuario usuario = null;
-                        // Lê a próxima linha do resultado da consulta. Retorna true se houver uma linha e false caso contrário.
-                        if (dr.Read())
-                        {
-                            // Cria uma nova instância do objeto 'Usuario'.
-                            usuario = new Usuario
-                            {
-                                // Lê o valor da coluna "Id" da linha atual do resultado, converte para inteiro e atribui à propriedade 'Id' do objeto 'usuario'.
-                                Id = Convert.ToInt32(dr["Id"]),
-                                // Lê o valor da coluna "Nome" da linha atual do resultado, converte para string e atribui à propriedade 'Nome' do objeto 'usuario'.
-                                Nome = dr["Nome"].ToString(),
-                                // Lê o valor da coluna "Email" da linha atual do resultado, converte para string e atribui à propriedade 'Email' do objeto 'usuario'.
-                                Email = dr["Email"].ToString(),
-                                // Lê o valor da coluna "Senha" da linha atual do resultado, converte para string e atribui à propriedade 'Senha' do objeto 'usuario'.
-                                Senha = dr["Senha"].ToString()
-                            };
-                        }
-                        /* Retorna o objeto 'usuario'. Se nenhum usuário foi encontrado com o email fornecido, a variável 'usuario'
-                         permanecerá null e será retornado.*/
-                        return usuario;
+                        //redireciona para a pagina index quando alterar
+                        return RedirectToAction(nameof(Index));
                     }
                 }
+                catch (Exception)
+                {
+                    // Adiciona um erro ao ModelState para exibir na View.
+                    ModelState.AddModelError("", "Ocorreu um erro ao Editar.");
+                    // Retorna a View com o modelo para exibir a mensagem de erro e os dados do formulário.
+                    return View(produto);
+                }
             }
+            // Se o ModelState não for válido, retorna a View com os erros de validação.
+            return View(produto);
         }
+
+
+        public IActionResult Excluir(int id)
+        {
+            // Obtém o cliente específico do repositório usando o Codigo fornecido.
+            _produtoRepositorio.ExcluirProduto(id);
+            // Retorna a View de confirmação de exclusão, passando o cliente como modelo.
+            return RedirectToAction(nameof(Index));
+        }
+    }
 }
