@@ -74,10 +74,10 @@ namespace Projetoasp.net.Controllers
         /*[Bind] para especificar explicitamente quais propriedades do objeto Cliente podem ser vinculadas a partir dos dados do formulário.
         Isso é uma boa prática de segurança para evitar o overposting (onde um usuário malicioso pode enviar dados para propriedades
         que você não pretendia que fossem alteradas)*/
-        public IActionResult EditarProduto(int id, [Bind("CodProd, NomeProd, QuantProd, PrecoProd, DescricaoProd")] Produto produto)
+        public IActionResult EditarProduto(int id, [Bind("Id, Nome, Quantidade, Preco, Descricao")] Produto produto)
         {
             // Verifica se o ID fornecido na rota corresponde ao ID do produto no modelo.
-            if (id != produto.CodProd)
+            if (id != produto.Id)
             {
                 return BadRequest(); // Retorna um erro 400 se os IDs não corresponderem.
             }

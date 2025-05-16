@@ -1,117 +1,178 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using MySql.Data.MySqlClient;
 using Projetoasp.net.Models;
-using Projetoasp.net.Repositorio;
+using System.Configuration;
+using System.Data;
 
-namespace ProjetoEcommerce.Controllers
+namespace Projetoasp.net.Repositorio
 {
-    public class ProdutoController : Controller
+    // Define a classe responsável por interagir com os dados de clientes no banco de dados
+    public class ProdutoRepositorio(IConfiguration configuration)
     {
-        /* Declara uma variável privada somente leitura do tipo ProdutoRepositorio chamada _produtoRepositorio.
-         O "readonly" indica que o valor desta variável só pode ser atribuído no construtor da classe.
-         ProdutoRepositorio é uma classe do repositorio responsável por interagir com a camada de dados para gerenciar informações de usuários.*/
-        private readonly ProdutoRepositorio _produtoRepositorio;
-
-        /* Define o construtor da classe ProdutoController.
-        Recebe uma instância de UsuarioRepositorio como parâmetro (injeção de dependência)*/
-        public ProdutoController(ProdutoRepositorio produtoRepositorio)
+        // Declara uma variável privada somente leitura para armazenar a string de conexão com o MySQL
+        private readonly string _conexaoMySQL = configuration.GetConnectionString("ConexaoMySQL");
+        public void Cadastrar(Produto produto)
         {
-            /* O construtor é chamado quando uma nova instância de ProdutoController é criada.*/
-            _produtoRepositorio = produtoRepositorio;
-        }
-
-        public IActionResult Index()
-        {
-            /* Retorna a View padrão associada a esta Action,
-             passando como modelo a lista de todos os produtos obtida do repositório.*/
-            return View(_produtoRepositorio.TodosProdutos());
-        }
-
-
-        /* Action para exibir o formulário de cadastro de produto (via Requisição GET)*/
-        public IActionResult CadastrarProduto()
-        {
-            //retorna a Página
-            return View();
-        }
-
-        // Action que recebe e processa os dados que serão enviados pelo formulário de cadastro de produto (via Requisição POST)
-        [HttpPost]
-        public IActionResult CadastrarProduto(Produto produto)
-        {
-
-            /* O parâmetro 'produto' recebe os dados enviados pelo formulário,
-             que são automaticamente mapeados para as propriedades da classe Produto.
-             Chama o método no repositório para cadastrar o novo produto no sistema.*/
-            _produtoRepositorio.Cadastrar(produto);
-
-            //redireciona para pagina Index 'nameof(Index)' garante que o nome da Action seja usado corretamente,
-            return RedirectToAction(nameof(Index));
-        }
-
-        /* Action para exibir o formulário de edição de um produto específico (via Requisição GET)
-         Este método recebe o 'id' do produto a ser editado como parâmetro.*/
-        public IActionResult EditarProduto(int Id)
-        {
-            // Obtém o produto específico do repositório usando o ID fornecido.
-            var produto = _produtoRepositorio.ObterProduto(Id);
-
-            // Verifica se o produto foi encontrado. É uma boa prática tratar casos onde o ID é inválido.
-            if (produto == null)
+            // Bloco using para garantir que a conexão seja fechada e os recursos liberados após o uso
+            using (var conexao = new MySqlConnection(_conexaoMySQL))
             {
-                // Você pode retornar um NotFound (código de status 404) ou outra resposta apropriada.
-                return NotFound();
+                // Abre a conexão com o banco de dados MySQL
+                conexao.Open();
+                // Cria um novo comando SQL para inserir dados na tabela 'produto'
+                MySqlCommand cmd = new MySqlCommand("insert into produto (Nome,Descricao,Preco,Quantidade) values (@nome, @descricao, @preco,@quantidade)", conexao); // @: PARAMETRO
+                                                                                                                                                                                         // Adiciona um parâmetro para o nome, definindo seu tipo e valor
+                cmd.Parameters.Add("@nomeprod", MySqlDbType.VarChar).Value = produto.Nome;
+                // Adiciona um parâmetro para o nome, definindo seu tipo e valor
+                cmd.Parameters.Add("@descricaoprod", MySqlDbType.VarChar).Value = produto.Descricao;
+                // Adiciona um parâmetro para o descricao, definindo seu tipo e valor
+                cmd.Parameters.Add("@preco", MySqlDbType.Int32).Value = produto.Preco;
+                // Adiciona um parâmetro para o preco, definindo seu tipo e valor
+                cmd.Parameters.Add("@quantidade", MySqlDbType.Int32).Value = produto.Quantidade;
+                // Adiciona um parâmetro para o quantidade, definindo seu tipo e valor
+
+                // Executa o comando SQL de inserção e retorna o número de linhas afetadas
+                cmd.ExecuteNonQuery();
+                // Fecha explicitamente a conexão com o banco de dados (embora o 'using' já faça isso)
+                conexao.Close();
             }
 
-            // Retorna a View associada a esta Action (EditarProduto.cshtml),
-            return View(produto);
         }
-
-
-        // Carrega a lista de Produto que envia a alteração(post)
-
-        [HttpPost]
-        [ValidateAntiForgeryToken] // Essencial para segurança contra ataques CSRF
-        /*[Bind] para especificar explicitamente quais propriedades do objeto Cliente podem ser vinculadas a partir dos dados do formulário.
-        Isso é uma boa prática de segurança para evitar o overposting (onde um usuário malicioso pode enviar dados para propriedades
-        que você não pretendia que fossem alteradas)*/
-        public IActionResult EditarProduto(int id, [Bind("Id, Nome, Descricao, Preco, Quantidade")] Produto produto)
+        public IEnumerable<Produto> TodosProdutos()
         {
-            // Verifica se o ID fornecido na rota corresponde ao ID do produto no modelo.
-            if (id != produto.Id)
+            // Cria uma nova lista para armazenar os objetos Produto
+            List<Produto> Produtolist = new List<Produto>();
+
+            // Bloco using para garantir que a conexão seja fechada e os recursos liberados após o uso
+            using (var conexao = new MySqlConnection(_conexaoMySQL))
             {
-                return BadRequest(); // Retorna um erro 400 se os IDs não corresponderem.
-            }
-            if (ModelState.IsValid)
-            {
-                //try /catch = tratamento de erros 
-                try
+                // Abre a conexão com o banco de dados MySQL
+                conexao.Open();
+                // Cria um novo comando SQL para selecionar todos os registros da tabela 'produto'
+                MySqlCommand cmd = new MySqlCommand("SELECT * from produto", conexao);
+
+                // Cria um adaptador de dados para preencher um DataTable com os resultados da consulta
+                MySqlDataAdapter da = new MySqlDataAdapter(cmd);
+                // Cria um novo DataTable
+                DataTable dt = new DataTable();
+                // metodo fill- Preenche o DataTable com os dados retornados pela consulta
+                da.Fill(dt);
+                // Fecha explicitamente a conexão com o banco de dados 
+                conexao.Close();
+
+                // interage sobre cada linha (DataRow) do DataTable
+                foreach (DataRow dr in dt.Rows)
                 {
-                    // Verifica se o cliente com o Codigo fornecido existe no repositório.
-                    if (_produtoRepositorio.Atualizar(produto))
-                    {
-                        //redireciona para a pagina index quando alterar
-                        return RedirectToAction(nameof(Index));
-                    }
+                    // Cria um novo objeto Cliente e preenche suas propriedades com os valores da linha atual
+                    Produtolist.Add(
+                                new Produto
+                                {
+                                    Id = Convert.ToInt32(dr["Id"]), // Converte o valor da coluna "CodProd" para inteiro
+                                    Nome = ((string)dr["Nome"]), // Converte o valor da coluna "NomeProd" para string
+                                    Quantidade = Convert.ToInt32(dr["Quantidade"]), // Converte o valor da coluna "QuantProd" para inteiro
+                                    Preco = Convert.ToInt32(dr["Preco"]), // Converte o valor da coluna "PrecoProd" para inteiro
+                                    Descricao = ((string)dr["Descricao"]), // Converte o valor da coluna "DescricaoProd" para string
+                                });
                 }
-                catch (Exception)
-                {
-                    // Adiciona um erro ao ModelState para exibir na View.
-                    ModelState.AddModelError("", "Ocorreu um erro ao Editar.");
-                    // Retorna a View com o modelo para exibir a mensagem de erro e os dados do formulário.
-                    return View(produto);
-                }
+                // Retorna a lista de todos os produtos
+                return Produtolist;
             }
-            // Se o ModelState não for válido, retorna a View com os erros de validação.
-            return View(produto);
         }
 
-
-        public IActionResult Excluir(int id)
+        // Método para buscar um produto específico pelo seu código (Codigo)
+        public Produto ObterProduto(int Id)
         {
-            // Obtém o cliente específico do repositório usando o Codigo fornecido.
-            _produtoRepositorio.ExcluirProduto(id);
-            // Retorna a View de confirmação de exclusão, passando o cliente como modelo.
-            return RedirectToAction(nameof(Index));
+            // Bloco using para garantir que a conexão seja fechada e os recursos liberados após o uso
+            using (var conexao = new MySqlConnection(_conexaoMySQL))
+            {
+                // Abre a conexão com o banco de dados MySQL
+                conexao.Open();
+                // Cria um novo comando SQL para selecionar um registro da tabela 'produto' com base no código
+                MySqlCommand cmd = new MySqlCommand("SELECT * from produto where Id=@Id ", conexao);
+
+                // Adiciona um parâmetro para o código a ser buscado, definindo seu tipo e valor
+                cmd.Parameters.AddWithValue("@Id", Id);
+
+                // Cria um adaptador de dados (não utilizado diretamente para ExecuteReader)
+                MySqlDataAdapter da = new MySqlDataAdapter(cmd);
+
+                // Declara um leitor de dados do MySQL
+                MySqlDataReader dr;
+                // Cria um novo objeto Produto para armazenar os resultados
+                Produto produto = new Produto();
+
+                /* Executa o comando SQL e retorna um objeto MySqlDataReader para ler os resultados
+                CommandBehavior.CloseConnection garante que a conexão seja fechada quando o DataReader for fechado*/
+
+                dr = cmd.ExecuteReader(CommandBehavior.CloseConnection);
+                // Lê os resultados linha por linha
+                while (dr.Read())
+                {
+                    // Preenche as propriedades do objeto Produto com os valores da linha atual
+                    produto.Id = Convert.ToInt32(dr["Id"]);
+                    produto.Nome = ((string)dr["Nome"]);
+                    produto.Quantidade = Convert.ToInt32(dr["Quantindade"]);
+                    produto.Preco= Convert.ToInt32(dr["Preco"]);
+                    produto.Descricao = ((string)dr["Descricao"]);
+                }
+                // Retorna o objeto Cliente encontrado (ou um objeto com valores padrão se não encontrado)
+                return produto;
+            }
+        }
+        // Método para Editar (atualizar) os dados de um produto existente no banco de dados
+        public bool Atualizar(Produto produto)
+        {
+            try
+            {
+                // Bloco using para garantir que a conexão seja fechada e os recursos liberados após o uso
+                using (var conexao = new MySqlConnection(_conexaoMySQL))
+                {
+                    // Abre a conexão com o banco de dados MySQL
+                    conexao.Open();
+                    // Cria um novo comando SQL para atualizar dados na tabela 'produto' com base no código
+                    MySqlCommand cmd = new MySqlCommand("Update produto set Nome=@nome, Preco=@preco, Descricao=@descricao, Quantidade=@quantidade" + " where Id=@id ", conexao);
+                    // Adiciona um parâmetro para o código do produto a ser atualizado, definindo seu tipo e valor
+                    cmd.Parameters.Add("@id", MySqlDbType.Int32).Value = produto.Id;
+                    // Adiciona um parâmetro para o novo nome, definindo seu tipo e valor
+                    cmd.Parameters.Add("@nome", MySqlDbType.VarChar).Value = produto.Nome;
+                    // Adiciona um parâmetro para o novo preco, definindo seu tipo e valor
+                    cmd.Parameters.Add("@preco", MySqlDbType.Int32).Value = produto.Preco;
+                    // Adiciona um parâmetro para o novo descricao, definindo seu tipo e valor
+                    cmd.Parameters.Add("@descricao", MySqlDbType.VarChar).Value = produto.Descricao;
+                    // Adiciona um parâmetro para o novo descricao, definindo seu tipo e valor
+                    cmd.Parameters.Add("@quantidade", MySqlDbType.Int32).Value = produto.Quantidade;
+                    // Executa o comando SQL de atualização e retorna o número de linhas afetadas
+                    //executa e verifica se a alteração foi realizada
+                    int linhasAfetadas = cmd.ExecuteNonQuery();
+                    return linhasAfetadas > 0; // Retorna true se ao menos uma linha foi atualizada
+
+                }
+            }
+            catch (MySqlException ex)
+            {
+                // Logar a exceção (usar um framework de logging como NLog ou Serilog)
+                Console.WriteLine($"Erro ao atualizar produto: {ex.Message}");
+                return false; // Retorna false em caso de erro
+
+            }
+        }
+        public void ExcluirProduto(int Id)
+        {
+            // Bloco using para garantir que a conexão seja fechada e os recursos liberados após o uso
+            using (var conexao = new MySqlConnection(_conexaoMySQL))
+            {
+                // Abre a conexão com o banco de dados MySQL
+                conexao.Open();
+
+                // Cria um novo comando SQL para deletar um registro da tabela 'Produto' com base no código
+                MySqlCommand cmd = new MySqlCommand("delete from produto where CodProd=@codigo", conexao);
+
+                // Adiciona um parâmetro para o código a ser excluído, definindo seu tipo e valor
+                cmd.Parameters.AddWithValue("@Id", Id);
+
+                // Executa o comando SQL de exclusão e retorna o número de linhas afetadas
+                int i = cmd.ExecuteNonQuery();
+
+                conexao.Close(); // Fecha  a conexão com o banco de dados
+            }
         }
     }
 }

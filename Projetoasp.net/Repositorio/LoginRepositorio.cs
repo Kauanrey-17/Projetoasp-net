@@ -25,7 +25,7 @@ namespace Projetoasp.net.Repositorio
                 // Cria um novo comando SQL para selecionar todos os campos da tabela 'Usuario' onde o campo 'Email' corresponde ao parâmetro fornecido.
                 MySqlCommand cmd = new("SELECT * FROM Usuario WHERE Email = @Email", conexao);
                 // Adiciona um parâmetro ao comando SQL para o campo 'Email', especificando o tipo como VarChar e utilizando o valor do parâmetro 'email'.
-                cmd.Parameters.Add("@Email", MySqlDbType.VarChar).Value = email;
+                cmd.Parameters.Add("@Email", MySqlDbType.VarChar).Value = Email;
 
                 // Executa o comando SQL SELECT e obtém um leitor de dados (MySqlDataReader). O CommandBehavior.CloseConnection garante que a conexão
                 // será fechada automaticamente quando o leitor for fechado.
