@@ -23,9 +23,9 @@ namespace Projetoasp.net.Repositorio
                 // Abre a conexão com o banco de dados MySQL.
                 conexao.Open();
                 // Cria um novo comando SQL para selecionar todos os campos da tabela 'Usuario' onde o campo 'Email' corresponde ao parâmetro fornecido.
-                MySqlCommand cmd = new("SELECT * FROM usuario WHERE Email = @Email", conexao);
+                MySqlCommand cmd = new("SELECT * FROM usuarios WHERE Email = @Email", conexao);
                 // Adiciona um parâmetro ao comando SQL para o campo 'Email', especificando o tipo como VarChar e utilizando o valor do parâmetro 'email'.
-                cmd.Parameters.Add("@Email", MySqlDbType.VarChar).Value = Email;
+                 cmd.Parameters.Add("@Email", MySqlDbType.VarChar).Value = Email;
 
                 // Executa o comando SQL SELECT e obtém um leitor de dados (MySqlDataReader). O CommandBehavior.CloseConnection garante que a conexão
                 // será fechada automaticamente quando o leitor for fechado.
@@ -36,7 +36,7 @@ namespace Projetoasp.net.Repositorio
                     // Lê a próxima linha do resultado da consulta. Retorna true se houver uma linha e false caso contrário.
                     if (dr.Read())
                     {
-                        // Cria uma nova instância do objeto 'Usuario'.
+                         // Cria uma nova instância do objeto 'Usuario'.
                         usuario = new Usuario
                         {
                             // Lê o valor da coluna "Id" da linha atual do resultado, converte para inteiro e atribui à propriedade 'Id' do objeto 'usuario'.
